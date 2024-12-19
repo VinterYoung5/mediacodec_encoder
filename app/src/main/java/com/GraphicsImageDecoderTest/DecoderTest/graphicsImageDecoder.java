@@ -181,7 +181,7 @@ public class graphicsImageDecoder extends AppCompatActivity
     public class Run implements Runnable{
         @Override
         public void run() {
-            Boolean useQcomRoi = true;
+            Boolean useQcomRoi = false;
             String mMediaType = MediaFormat.MIMETYPE_VIDEO_HEVC;
             int width = 1088,height = 1920;
             int fillSize = width * height * 3 / 2;
@@ -206,9 +206,15 @@ public class graphicsImageDecoder extends AppCompatActivity
 
             MediaFormat format = MediaFormat.createVideoFormat(mMediaType,width,height);
             format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible);//COLOR_FormatYUV420Flexible
-            format.setInteger(MediaFormat.KEY_BITRATE_MODE, MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR);
-            format.setInteger(MediaFormat.KEY_BIT_RATE, 3 * 1000 * 1000);
-            format.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
+            int bitRateMode = MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR;
+            String brm_s = bitRateMode == MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR ? "cbr" :
+                    bitRateMode == MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR ? "vbr" : "cq";
+            format.setInteger(MediaFormat.KEY_BITRATE_MODE, bitRateMode);
+            int bitRate = 3;
+            format.setInteger(MediaFormat.KEY_BIT_RATE, bitRate * 1024 * 1024);
+            int frameRate = 30;
+            format.setInteger(MediaFormat.KEY_FRAME_RATE, frameRate);
+            int iFrameInterval = 1;
             format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
             // turn on ROI feature at initialized stage
             if (!useQcomRoi) {
@@ -223,6 +229,8 @@ public class graphicsImageDecoder extends AppCompatActivity
             } catch (FileNotFoundException e) {
                 throw new RuntimeException(e);
             }
+            int[] qp = {-6,6};
+            fileName = fileName+"."+brm_s+"."+bitRate+"Mbps"+"."+frameRate+"fps"+"."+"qp("+qp[0]+"_"+qp[1]+")";
             String outPath = "/storage/emulated/0/DCIM/Video/"+fileName+".mp4";
             MediaMuxer mMediaMuxer;
             try {
@@ -257,7 +265,7 @@ public class graphicsImageDecoder extends AppCompatActivity
                     int flag = !inputEos[0] ? 0 : MediaCodec.BUFFER_FLAG_END_OF_STREAM;
 
                     Bundle param = new Bundle();
-                    String roIRects = "736,32-1280,256=-6;736,256-1280,480=6;";
+                    String roIRects = "736,32-1280,256="+qp[0]+";736,256-1280,480="+qp[1]+";";
                     if (!useQcomRoi) {
                         param.putString(MediaCodec.PARAMETER_KEY_QP_OFFSET_RECTS, roIRects);
                     } else {
