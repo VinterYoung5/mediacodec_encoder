@@ -48,7 +48,6 @@ public class graphicsImageDecoder extends AppCompatActivity
     boolean isRoiSupport = false;
 
     File fileYUV = null;
-    File fileES = null;
     String fileName = null;
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -144,17 +143,9 @@ public class graphicsImageDecoder extends AppCompatActivity
                         uri = null;
                         fileName = null;
                         fileYUV = null;
-                        fileES = null;
                         return;
                     }
-                    fileES = new File("/storage/emulated/0/DCIM/Video/"+fileName+".es");
-                    try {
-                        fileES.createNewFile();
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
 
-                    Log.v(TAG, "fileES exists " + fileES.exists());
                     try {
                         InputStream is = graphicsImageDecoder.this.getContentResolver().openInputStream(uri);
                         File cache = new File( graphicsImageDecoder.this.getExternalCacheDir().getAbsolutePath(), displayName);
@@ -190,7 +181,7 @@ public class graphicsImageDecoder extends AppCompatActivity
     public class Run implements Runnable{
         @Override
         public void run() {
-
+            Boolean useQcomRoi = true;
             String mMediaType = MediaFormat.MIMETYPE_VIDEO_HEVC;
             int width = 1088,height = 1920;
             int fillSize = width * height * 3 / 2;
@@ -216,12 +207,15 @@ public class graphicsImageDecoder extends AppCompatActivity
             MediaFormat format = MediaFormat.createVideoFormat(mMediaType,width,height);
             format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible);//COLOR_FormatYUV420Flexible
             format.setInteger(MediaFormat.KEY_BITRATE_MODE, MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR);
-            format.setInteger(MediaFormat.KEY_BIT_RATE, 20 * 1000 * 1000);
+            format.setInteger(MediaFormat.KEY_BIT_RATE, 3 * 1000 * 1000);
             format.setInteger(MediaFormat.KEY_FRAME_RATE, 30);
             format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
             // turn on ROI feature at initialized stage
-            format.setFeatureEnabled(MediaCodecInfo.CodecCapabilities.FEATURE_Roi, true);
-            //format.setString(""vendor.qti-ext-extradata-enable.types", "roiinfo");
+            if (!useQcomRoi) {
+                format.setFeatureEnabled(MediaCodecInfo.CodecCapabilities.FEATURE_Roi, true);
+            } else {
+                format.setInteger("vendor.qti-ext-enc-roiinfo.enable", 1);
+            }
 
             FileInputStream inputStream = null;
             try {
@@ -258,15 +252,21 @@ public class graphicsImageDecoder extends AppCompatActivity
                     } catch (IndexOutOfBoundsException e){
                         e.printStackTrace();
                     }
-
-                    Bundle param = new Bundle();
-                    String roIRects = "640,0-1408,256=-20";
-                    param.putString(MediaCodec.PARAMETER_KEY_QP_OFFSET_RECTS,roIRects);
-                    encoder.setParameters(param);
-
                     long pts = inputEos[0] ? 0 : queueCnt[0] * 30 * 1000;
                     int size = inputEos[0] ? 0 : fillSize;
                     int flag = !inputEos[0] ? 0 : MediaCodec.BUFFER_FLAG_END_OF_STREAM;
+
+                    Bundle param = new Bundle();
+                    String roIRects = "736,32-1280,256=-6;736,256-1280,480=6;";
+                    if (!useQcomRoi) {
+                        param.putString(MediaCodec.PARAMETER_KEY_QP_OFFSET_RECTS, roIRects);
+                    } else {
+                        param.putLong("vendor.qti-ext-enc-roiinfo.timestamp",pts);
+                        param.putString("vendor.qti-ext-enc-roiinfo.type","rect");
+                        param.putString("vendor.qti-ext-enc-roiinfo.rect-payload",roIRects);
+                    }
+                    encoder.setParameters(param);
+
                     queueCnt[0]++;
                     encoder.queueInputBuffer(inputBufferId, 0,size, pts,flag);
                     Log.d(TAG, "onInputBufferAvailable pts: "+pts + " size " + size + " offsize[0] " +offsize[0]+" flag "+ flag +" queueCnt[0] "+queueCnt[0]);
@@ -274,9 +274,6 @@ public class graphicsImageDecoder extends AppCompatActivity
 
                 @Override
                 public void onOutputBufferAvailable(MediaCodec mc, int outputBufferId,  MediaCodec.BufferInfo info) {
-                    if ((info.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
-                        // Simply ignore codec config buffers.
-                    }
                     ByteBuffer outputBuffer = encoder.getOutputBuffer(outputBufferId);
                     MediaFormat bufferFormat = encoder.getOutputFormat(outputBufferId); // option A
                     // bufferFormat is equivalent to mOutputFormat
@@ -286,9 +283,8 @@ public class graphicsImageDecoder extends AppCompatActivity
                     }
                     if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
                         outputEos[0] = true;
-                        Log.d(TAG, "outputEos fileES.length() "+ fileES.length());
                     }
-                    Log.d(TAG, "onOutputBufferAvailable pts: "+info.presentationTimeUs + " size " + info.size+ " flags " +info.flags +" fileES.length() "+ fileES.length());
+                    Log.d(TAG, "onOutputBufferAvailable pts: "+info.presentationTimeUs + " size " + info.size+ " flags " +info.flags );
                     try {
                         encoder.releaseOutputBuffer(outputBufferId,false);
                     } catch (IllegalStateException e) {
