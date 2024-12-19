@@ -11,6 +11,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.FileUtils;
+import android.provider.ContactsContract;
 import android.provider.OpenableColumns;
 import android.provider.Settings;
 import android.util.Log;
@@ -33,6 +34,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class graphicsImageDecoder extends AppCompatActivity
 {
@@ -181,7 +184,7 @@ public class graphicsImageDecoder extends AppCompatActivity
     public class Run implements Runnable{
         @Override
         public void run() {
-            Boolean useQcomRoi = false;
+            Boolean useQcomRoi = true;
             String mMediaType = MediaFormat.MIMETYPE_VIDEO_HEVC;
             int width = 1088,height = 1920;
             int fillSize = width * height * 3 / 2;
@@ -194,7 +197,6 @@ public class graphicsImageDecoder extends AppCompatActivity
             MediaCodec encoder;
             try {
                 encoder = MediaCodec.createEncoderByType(mMediaType);
-
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -206,16 +208,16 @@ public class graphicsImageDecoder extends AppCompatActivity
 
             MediaFormat format = MediaFormat.createVideoFormat(mMediaType,width,height);
             format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible);//COLOR_FormatYUV420Flexible
-            int bitRateMode = MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR;
+            int bitRateMode = MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR;
             String brm_s = bitRateMode == MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR ? "cbr" :
                     bitRateMode == MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_VBR ? "vbr" : "cq";
             format.setInteger(MediaFormat.KEY_BITRATE_MODE, bitRateMode);
-            int bitRate = 3;
+            int bitRate = 20;
             format.setInteger(MediaFormat.KEY_BIT_RATE, bitRate * 1024 * 1024);
             int frameRate = 30;
             format.setInteger(MediaFormat.KEY_FRAME_RATE, frameRate);
-            int iFrameInterval = 1;
-            format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1);
+            int iFrameInterval = 0;
+            format.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, iFrameInterval);
             // turn on ROI feature at initialized stage
             if (!useQcomRoi) {
                 format.setFeatureEnabled(MediaCodecInfo.CodecCapabilities.FEATURE_Roi, true);
@@ -229,10 +231,13 @@ public class graphicsImageDecoder extends AppCompatActivity
             } catch (FileNotFoundException e) {
                 throw new RuntimeException(e);
             }
+            SimpleDateFormat form = new SimpleDateFormat("yyyyMMdd_HHmmss");
+            Date date = new Date(System.currentTimeMillis());
             int[] qp = {-6,6};
-            fileName = fileName+"."+brm_s+"."+bitRate+"Mbps"+"."+frameRate+"fps"+"."+"qp("+qp[0]+"_"+qp[1]+")";
-            String outPath = "/storage/emulated/0/DCIM/Video/"+fileName+".mp4";
+            String name = fileName+"."+brm_s+"."+bitRate+"Mbps"+"."+frameRate+"fps"+"."+"qp("+qp[0]+"_"+qp[1]+")"+form.format(date);
+            String outPath = "/storage/emulated/0/DCIM/"+name+".mp4";
             MediaMuxer mMediaMuxer;
+
             try {
                 mMediaMuxer= new MediaMuxer(outPath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
             } catch (IOException e) {
@@ -243,6 +248,9 @@ public class graphicsImageDecoder extends AppCompatActivity
             encoder.setCallback(new MediaCodec.Callback() {
                 @Override
                 public void onInputBufferAvailable(MediaCodec mc, int inputBufferId) {
+                    if (inputEos[0]) {
+                        return;
+                    }
                     ByteBuffer inputBuffer = encoder.getInputBuffer(inputBufferId);
                     // fill inputBuffer with valid data
                     //Log.d(TAG, "inputBufferId  "+inputBufferId + " size " + inputBuffer.get());
@@ -260,7 +268,7 @@ public class graphicsImageDecoder extends AppCompatActivity
                     } catch (IndexOutOfBoundsException e){
                         e.printStackTrace();
                     }
-                    long pts = inputEos[0] ? 0 : queueCnt[0] * 30 * 1000;
+                    long pts = inputEos[0] ? 0 : 1000/frameRate * queueCnt[0] * 1000;
                     int size = inputEos[0] ? 0 : fillSize;
                     int flag = !inputEos[0] ? 0 : MediaCodec.BUFFER_FLAG_END_OF_STREAM;
 
@@ -269,7 +277,7 @@ public class graphicsImageDecoder extends AppCompatActivity
                     if (!useQcomRoi) {
                         param.putString(MediaCodec.PARAMETER_KEY_QP_OFFSET_RECTS, roIRects);
                     } else {
-                        param.putLong("vendor.qti-ext-enc-roiinfo.timestamp",pts);
+                        param.putLong("vendor.qti-ext-enc-roiinfo.timestamp",0);
                         param.putString("vendor.qti-ext-enc-roiinfo.type","rect");
                         param.putString("vendor.qti-ext-enc-roiinfo.rect-payload",roIRects);
                     }
@@ -277,7 +285,7 @@ public class graphicsImageDecoder extends AppCompatActivity
 
                     queueCnt[0]++;
                     encoder.queueInputBuffer(inputBufferId, 0,size, pts,flag);
-                    Log.d(TAG, "onInputBufferAvailable pts: "+pts + " size " + size + " offsize[0] " +offsize[0]+" flag "+ flag +" queueCnt[0] "+queueCnt[0]);
+                    //Log.d(TAG, "onInputBufferAvailable pts: "+pts + " size " + size + " offsize[0] " +offsize[0]+" flag "+ flag +" queueCnt[0] "+queueCnt[0]);
                 }
 
                 @Override
@@ -289,15 +297,25 @@ public class graphicsImageDecoder extends AppCompatActivity
                     if (info.size != 0 && (info.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) == 0) {
                         mMediaMuxer.writeSampleData(videoTrackid[0], outputBuffer, info);
                     }
+
                     if ((info.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
                         outputEos[0] = true;
+                        Log.d(TAG, "onOutputBufferAvailable pts: "+info.presentationTimeUs + " size " + info.size+ " flags " +info.flags +" outputEos "+ outputEos[0]);
+                        Log.d(TAG, "while out outputEos "+outputEos[0]);
+                        encoder.stop();
+                        encoder.release();
+                        Log.d(TAG, "encoder.stop and release");
+                        mMediaMuxer.stop();
+                        mMediaMuxer.release();
+                        Log.d(TAG, "mMediaMuxer.stop and release");
+                    } else {
+                        try {
+                            encoder.releaseOutputBuffer(outputBufferId, false);
+                        } catch (IllegalStateException e) {
+                            e.printStackTrace();
+                        }
                     }
-                    Log.d(TAG, "onOutputBufferAvailable pts: "+info.presentationTimeUs + " size " + info.size+ " flags " +info.flags );
-                    try {
-                        encoder.releaseOutputBuffer(outputBufferId,false);
-                    } catch (IllegalStateException e) {
-                        e.printStackTrace();
-                    }
+                    //Log.d(TAG, "onOutputBufferAvailable pts: "+info.presentationTimeUs + " size " + info.size+ " flags " +info.flags +" outputEos "+ outputEos[0]);
                 }
 
                 @Override
@@ -322,17 +340,9 @@ public class graphicsImageDecoder extends AppCompatActivity
             encoder.start();
             Log.d(TAG, "encoder.start");
 
+//            while (!outputEos[0]) {
+//            }
 
-            while (!outputEos[0]) {
-                // configure roi as rect and offset
-            }
-
-            encoder.stop();
-            encoder.release();
-            Log.d(TAG, "encoder.stop and release");
-            mMediaMuxer.stop();
-            mMediaMuxer.release();
-            Log.d(TAG, "mMediaMuxer.stop and release");
         }
     }
 }
