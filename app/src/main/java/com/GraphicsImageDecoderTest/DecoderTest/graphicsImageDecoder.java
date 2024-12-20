@@ -184,7 +184,7 @@ public class graphicsImageDecoder extends AppCompatActivity
     public class Run implements Runnable{
         @Override
         public void run() {
-            Boolean useQcomRoi = true;
+            Boolean useQcomRoi = false;
             String mMediaType = MediaFormat.MIMETYPE_VIDEO_HEVC;
             int width = 1088,height = 1920;
             int fillSize = width * height * 3 / 2;
@@ -277,12 +277,11 @@ public class graphicsImageDecoder extends AppCompatActivity
                     if (!useQcomRoi) {
                         param.putString(MediaCodec.PARAMETER_KEY_QP_OFFSET_RECTS, roIRects);
                     } else {
-                        param.putLong("vendor.qti-ext-enc-roiinfo.timestamp",0);
+                        //param.putLong("vendor.qti-ext-enc-roiinfo.timestamp",0);
                         param.putString("vendor.qti-ext-enc-roiinfo.type","rect");
                         param.putString("vendor.qti-ext-enc-roiinfo.rect-payload",roIRects);
                     }
                     encoder.setParameters(param);
-
                     queueCnt[0]++;
                     encoder.queueInputBuffer(inputBufferId, 0,size, pts,flag);
                     //Log.d(TAG, "onInputBufferAvailable pts: "+pts + " size " + size + " offsize[0] " +offsize[0]+" flag "+ flag +" queueCnt[0] "+queueCnt[0]);
