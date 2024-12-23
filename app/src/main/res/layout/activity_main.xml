@@ -20,21 +20,29 @@
         <!-- Button for encoding of image-->
         <Button
             android:id="@+id/btn_file"
-            android:layout_width="0dp"
+            android:layout_width="10dp"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="2dp"
-            android:layout_marginRight="2dp"
             android:layout_weight="1"
             android:text="File" />
-
+        <Spinner
+            android:id="@+id/spinner_qp"
+            android:layout_width="40dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="QP" />
+        <Spinner
+            android:id="@+id/spinner_br"
+            android:layout_width="40dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="BR" />
         <Button
             android:id="@+id/btn_encode"
-            android:layout_width="0dp"
+            android:layout_width="10dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="2dp"
-            android:layout_marginLeft="2dp"
             android:layout_weight="1"
-            android:text="Encod" />
+            android:text="Enc" />
+        <!--
         <Button
             android:id="@+id/btn_play"
             android:layout_width="0dp"
@@ -43,14 +51,7 @@
             android:layout_marginLeft="2dp"
             android:layout_weight="1"
             android:text="Play" />
-        <Button
-            android:id="@+id/btn_pause"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="2dp"
-            android:layout_marginLeft="2dp"
-            android:layout_weight="1"
-            android:text="Pause" />
+        -->
     </LinearLayout>
 
     <!-- Textview to display encoded text-->
