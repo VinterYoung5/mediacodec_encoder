@@ -43,6 +43,8 @@ import java.util.Date;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static android.view.View.INVISIBLE;
+
 public class graphicsImageDecoder extends AppCompatActivity
 {
 
@@ -75,13 +77,12 @@ public class graphicsImageDecoder extends AppCompatActivity
         //btnPlay.setEnabled(false);
 
         spQP = findViewById(R.id.spinner_qp);
-        String[] nameQP = {"-6qp", "-5qp", "-4qp", "-3qp", "-2qp", "-1qp", "0qp",
-                "1qp", "2qp", "3qp", "4qp", "5qp", "6qp"};
+        String[] nameQP = {"-6qp", "-3qp","0qp", "6qp"};
         adapterQP = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, nameQP);
         spQP.setAdapter(adapterQP);
 
         spBR = findViewById(R.id.spinner_br);
-        String[] nameBR = {"50Mbps", "20Mbps", "10Mbps", "5Mbps", "2Mbps"};
+        String[] nameBR = {"40Mbps","20Mbps","10Mbps","5Mbps"};
         adapterBR =  new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, nameBR);
         spBR.setAdapter(adapterBR);
 
@@ -91,6 +92,9 @@ public class graphicsImageDecoder extends AppCompatActivity
         sfView_nor = findViewById(R.id.sfView_nor);
         sfView_roi = findViewById(R.id.sfView_roi);
         sfView_yuv = findViewById(R.id.sfView_yuv);
+        sfView_nor.setVisibility(INVISIBLE);
+        sfView_roi.setVisibility(INVISIBLE);
+        sfView_yuv.setVisibility(INVISIBLE);
 
         btnFile.setOnClickListener(view -> {
             // check condition
@@ -202,7 +206,7 @@ public class graphicsImageDecoder extends AppCompatActivity
 
                     try {
                         InputStream is = graphicsImageDecoder.this.getContentResolver().openInputStream(uri);
-                        File cache = new File( graphicsImageDecoder.this.getExternalCacheDir().getAbsolutePath(), displayName);
+                        File cache = new File(graphicsImageDecoder.this.getExternalCacheDir().getAbsolutePath(), displayName);
                         Log.v(TAG, "cache file : " + cache);
                         if (!cache.exists()) {
                             FileOutputStream fos = new FileOutputStream(cache);
@@ -364,6 +368,7 @@ public class graphicsImageDecoder extends AppCompatActivity
                         mMediaMuxer.stop();
                         mMediaMuxer.release();
                         Log.d(TAG, "mMediaMuxer.stop and release");
+                        Toast.makeText(graphicsImageDecoder.this, "encode finish" + outPath, Toast.LENGTH_LONG).show();
                     } else {
                         try {
                             encoder.releaseOutputBuffer(outputBufferId, false);
@@ -395,7 +400,6 @@ public class graphicsImageDecoder extends AppCompatActivity
             Log.d(TAG, "encoder.configure");
             encoder.start();
             Log.d(TAG, "encoder.start");
-
 //            while (!outputEos[0]) {
 //            }
 

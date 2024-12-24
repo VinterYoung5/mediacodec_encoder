@@ -20,26 +20,19 @@
         <!-- Button for encoding of image-->
         <Button
             android:id="@+id/btn_file"
-            android:layout_width="10dp"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:layout_marginStart="2dp"
+            android:layout_marginLeft="2dp"
             android:text="File" />
-        <Spinner
-            android:id="@+id/spinner_qp"
-            android:layout_width="40dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="QP" />
-        <Spinner
-            android:id="@+id/spinner_br"
-            android:layout_width="40dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="BR" />
+
         <Button
             android:id="@+id/btn_encode"
-            android:layout_width="10dp"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginStart="2dp"
+            android:layout_marginLeft="2dp"
             android:layout_weight="1"
             android:text="Enc" />
         <!--
@@ -53,7 +46,27 @@
             android:text="Play" />
         -->
     </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
 
+        <!-- Button for encoding of image-->
+
+        <Spinner
+            android:id="@+id/spinner_qp"
+            android:layout_width="40dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="QP" />
+        <Spinner
+            android:id="@+id/spinner_br"
+            android:layout_width="40dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="BR" />
+
+    </LinearLayout>
     <!-- Textview to display encoded text-->
     <TextView
         android:id="@+id/textView"
